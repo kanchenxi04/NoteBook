@@ -1,0 +1,81 @@
+import util
+import redis_config
+
+class AbstractWorker(object):
+
+    def __init__(self, work_q_name="worker", job_q_name="master"):
+        self.conn = util.getRedConn()
+        self.pubsub = self.conn.pubsub()
+        self.work_queue = []
+        self.work_q = work_q_name
+        self.job_q = job_q_name
+
+    def run(self):
+        while True:
+            job = self.get_job(self.job_q)
+            self.work(job)
+            self.done_job(job)
+        pass
+
+    def get_job(self, key):
+        return self.conn.brpoplpush(key,0)
+
+    def done_job(self, key):
+        job = self.conn.lpop(key)
+
+    def work(self, job):
+        print("working on job" + str(job))
+        import time
+        time.sleep(3)
+
+
+
+if __name__ == "__main__":
+
+    worker = AbstractWorker(
+        work_q_name=redis_config.work_q_key,
+        job_q_name=redis_config.master_q_key
+    )
+    worker.run()
+    
+###############
+#master
+###############
+import util
+import redis_config
+import time
+
+class AbstractMaster(object):
+    def __init__(self, job_q_name="master", work_q_name="worker"):
+        self.conn = util.getRedConn()
+        self.work_q = work_q_name
+        self.job_q = job_q_name
+        pass
+
+    def run(self):
+        for job in self.generate_job():
+            self.send_job(job)
+            while self.job_Q_len() > 5:
+                print("Job queue is more than 5 now, waiting for consumer")
+                time.sleep(5)
+            time.sleep(2)
+
+    def job_Q_len(self):
+        return self.conn.llen(self.job_q)
+
+    def generate_job(self):
+        for i in range(100):
+            yield "Job " + str(i)
+
+    def send_job(self, job):
+        self.conn.lpush(self.job_q, job)
+
+
+if __name__ == "__main__":
+
+    master = AbstractMaster(
+        work_q_name=redis_config.work_q_key,
+        job_q_name=redis_config.master_q_key
+    )
+    master.run()
+
