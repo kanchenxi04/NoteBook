@@ -41,3 +41,30 @@ if __name__ == "__main__":
     import marketdata
     ob = OrderBook( marketdata.getPxLoc() )
     print(ob)
+
+###################################################################################
+#orderbookutil.py
+import orderbook
+
+def getSpread(orderbook):
+    return orderbook.ask[0].px - orderbook.bid[0].px
+
+def getDiffVol(orderbook):
+    return orderbook.ask[0].vol / orderbook.bid[0].vol
+
+def getNear(orderbook, side):
+    buck = None
+    if side == "buy":
+        return orderbook.bid[0]
+    elif side == "sell" or side == "short":
+        return orderbook.ask[0]
+
+def getFar(orderbook, side):
+    buck = None
+    if side == "buy":
+        return orderbook.ask[0]
+    elif side == "sell" or side == "short":
+        return orderbook.bid[0]
+
+
+    
